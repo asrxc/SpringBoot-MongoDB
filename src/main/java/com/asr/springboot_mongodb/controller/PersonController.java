@@ -3,6 +3,7 @@ package com.asr.springboot_mongodb.controller;
 import com.asr.springboot_mongodb.collection.Person;
 import com.asr.springboot_mongodb.service.PersonService;
 import io.swagger.models.auth.In;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,5 +48,15 @@ public class PersonController {
     ) {
         Pageable pageable = PageRequest.of(page,size);
         return personService.search(name, minAge,maxAge,city,page,size,pageable);
+    }
+
+    @GetMapping("/oldestPerson")
+    public List<Document> getOldestPerson(){
+        return personService.getOldestPersonByCity();
+    }
+
+    @GetMapping("/populationByCity")
+    public List<Document> getPopulationByCity(){
+        return personService.getPopulationByCity();
     }
 }

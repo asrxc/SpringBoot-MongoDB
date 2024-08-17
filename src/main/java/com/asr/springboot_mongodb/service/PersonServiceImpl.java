@@ -2,10 +2,13 @@ package com.asr.springboot_mongodb.service;
 
 import com.asr.springboot_mongodb.collection.Person;
 import com.asr.springboot_mongodb.repository.PersonRepository;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -64,6 +67,35 @@ public class PersonServiceImpl implements PersonService{
 
         return PageableExecutionUtils.getPage(mongoTemplate.find(query,Person.class), pageable,
                                 () -> mongoTemplate.count(query.skip(0).limit(0), Person.class));
+    }
+
+    @Override
+    public List<Document> getOldestPersonByCity() {
+        UnwindOperation unwindOperation = Aggregation.unwind("address");
+        SortOperation sortOperation = Aggregation.sort(Sort.Direction.DESC,"age");
+        GroupOperation groupOperation = Aggregation.group("address.city")
+                                        .first(Aggregation.ROOT)
+                                        .as("oldestPerson");
+        Aggregation aggregation = Aggregation.newAggregation(unwindOperation,sortOperation,groupOperation);
+
+        List<Document> person = mongoTemplate.aggregate(aggregation, Person.class,Document.class).getMappedResults();
+
+        return person;
+    }
+
+    @Override
+    public List<Document> getPopulationByCity() {
+        UnwindOperation unwindOperation = Aggregation.unwind("address");
+        GroupOperation groupOperation = Aggregation.group("address.city").count().as("popCount");
+        SortOperation sortOperation = Aggregation.sort(Sort.Direction.DESC,"popCount");
+
+        ProjectionOperation projectionOperation = Aggregation.project().andExpression("_id").as("city")
+                                                    .andExpression("popCount").as("count").andExclude("_id");
+       Aggregation aggregation = Aggregation.newAggregation(unwindOperation,groupOperation,sortOperation,projectionOperation);
+       List<Document>  documents = mongoTemplate.aggregate(aggregation,
+                                    Person.class,
+                                    Document.class).getMappedResults();
+       return documents;
     }
 
 
